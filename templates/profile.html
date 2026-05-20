@@ -110,6 +110,9 @@
       <i class="bi bi-patch-check-fill" style="color:var(--success);font-size:.85rem"></i>
     </div>
     <button class="card-btn" onclick="showCodelioCard()">Get your Codolio Card</button>
+    <a class="card-btn" href="{{ url_for('export_csv') }}" style="background:var(--bg-secondary);border:1px solid var(--border-color);color:var(--text-secondary)">
+      <i class="bi bi-download" style="margin-right:6px"></i> Export Progress CSV
+    </a>
     <div class="prof-bio">{{ user.bio or 'Software Engineer | Problem Solver | DSA Enthusiast' }}</div>
     <div class="social-row">
       {% if user.email %}<a href="mailto:{{ user.email }}" class="social-icon" title="Email"><i class="bi bi-envelope"></i></a>{% endif %}

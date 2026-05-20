@@ -14,6 +14,7 @@ from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
 from profile_validation import build_profile_updates
 from notes_export import build_topic_notes_markdown, topic_notes_filename
+from progress_export import build_progress_csv
 
 load_dotenv()
 
@@ -964,6 +965,20 @@ def bookmarks():
     progress_dict = progress
     
     return render_template('bookmarks.html', questions=questions, progress_dict=progress_dict)
+
+@app.route('/export/csv')
+@login_required
+def export_csv():
+    questions = list(db.question.find())
+    topic_ids = list({q.get('topic') for q in questions if q.get('topic')})
+    topic_lookup = {
+        topic['_id']: topic.get('name', 'Unknown')
+        for topic in db.topic.find({'_id': {'$in': topic_ids}}, {'name': 1})
+    }
+    csv_data = build_progress_csv(questions, topic_lookup, current_user.progress)
+    response = Response(csv_data, mimetype='text/csv')
+    response.headers['Content-Disposition'] = 'attachment; filename=my_dsa_progress.csv'
+    return response
 
 @app.route('/profile')
 @login_required
