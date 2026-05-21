@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, render_template, request
 
+from app.extensions import limiter
 from app.utils import search_dsa_questions
 
 
@@ -13,6 +14,7 @@ def search():
 
 
 @search_bp.route("/api/search_questions")
+@limiter.limit("30 per minute")
 def api_search_questions():
     raw_query = request.args.get("q", "")
     try:

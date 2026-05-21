@@ -12,6 +12,7 @@ import time
 from card_generator import generate_progress_card
 
 from app.extensions import db
+from app.extensions import limiter
 from app.platforms.fetchers import (
     fetch_coding_ninjas,
     fetch_gfg,
@@ -30,6 +31,7 @@ profile_bp = Blueprint("profile", __name__)
 
 @profile_bp.route("/sync_platforms", methods=["POST"])
 @login_required
+@limiter.limit("5 per minute")
 def sync_platforms():
     data = request.json
     now = utc_now()
@@ -209,6 +211,7 @@ def search_universities():
 
 @profile_bp.route("/upload_photo", methods=["POST"])
 @login_required
+@limiter.limit("10 per minute")
 def upload_photo():
     if "photo" not in request.files:
         return jsonify({"success": False, "error": "No file"}), 400

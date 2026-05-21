@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user
 
+from app.extensions import limiter
 from app.utils import build_college_leaderboard_data, build_leaderboard_data
 
 
@@ -8,6 +9,7 @@ leaderboard_bp = Blueprint("leaderboard", __name__)
 
 
 @leaderboard_bp.route("/leaderboard")
+@limiter.limit("20 per minute")
 def leaderboard():
     entries = build_leaderboard_data()
 

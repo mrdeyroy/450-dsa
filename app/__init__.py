@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from flask import Flask
 
 from app.auth import auth_bp
-from app.extensions import bcrypt, db, login_manager, mongo, oauth
+from app.extensions import bcrypt, db, limiter, login_manager, mongo, oauth
 from app.leaderboard import leaderboard_bp
 from app.profile import profile_bp
 from app.search import search_bp
@@ -24,6 +24,7 @@ def create_app():
     bcrypt.init_app(app)
     login_manager.init_app(app)
     oauth.init_app(app)
+    limiter.init_app(app)
 
     login_manager.login_view = "auth.login"
 
@@ -89,5 +90,18 @@ def create_app():
     app.register_blueprint(profile_bp)
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(search_bp)
+
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        retry_after = getattr(e, 'retry_after', 60)
+        from flask import jsonify
+        response = jsonify({
+            'error': 'Too many requests',
+            'message': str(e.description),
+            'retry_after': retry_after
+        })
+        response.status_code = 429
+        response.headers['Retry-After'] = str(retry_after)
+        return response
 
     return app
