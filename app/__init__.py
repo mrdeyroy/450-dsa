@@ -7,7 +7,7 @@ from flask import Flask, session
 
 from app.admin import admin_bp
 from app.auth import auth_bp
-from app.extensions import bcrypt, db, limiter, login_manager, mongo, oauth
+from app.extensions import bcrypt, db, limiter, login_manager, mongo, oauth, cache
 from app.leaderboard import leaderboard_bp
 from app.profile import profile_bp
 from app.search import search_bp
@@ -21,7 +21,12 @@ def create_app():
     app = Flask(__name__, template_folder="../templates")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "supersecretkey")
     app.config["MONGO_URI"] = os.environ.get("MONGO_URI", "mongodb://localhost:27017/450_dsa")
+    app.config["CACHE_TYPE"] = "SimpleCache"
+    app.config["CACHE_DEFAULT_TIMEOUT"] = 300
+    
+    cache.init_app(app)
 
+    # Initialize extensions
     mongo.init_app(app)
     bcrypt.init_app(app)
     login_manager.init_app(app)
@@ -55,6 +60,14 @@ def create_app():
     db.user.create_index("google_id", unique=True, sparse=True)
     db.user.create_index("is_admin")
     db.topic.create_index("name", unique=True)
+    # Create indexes (skip if using mock)
+    try:
+        db.user.create_index("email", unique=True, sparse=True)
+        db.user.create_index("github_id", unique=True, sparse=True)
+        db.user.create_index("google_id", unique=True, sparse=True)
+        db.topic.create_index("name", unique=True)
+    except Exception:
+        pass  # Skip indexes if using mock DB
 
     # Lightweight schema backfill for legacy user documents.
     db.user.update_many({"is_admin": {"$exists": False}}, {"$set": {"is_admin": False}})
@@ -71,12 +84,15 @@ def create_app():
                 topic_id = result.inserted_id
                 questions = []
                 for question in topic["questions"]:
+                    # ADDED: difficulty field
+                    difficulty = question.get("difficulty", "Medium")
                     questions.append(
                         {
                             "topic": topic_id,
                             "problem": question["Problem"],
                             "url": question["URL"],
                             "url2": question.get("URL2", ""),
+                            "difficulty": difficulty,  # <-- NEW FIELD
                         }
                     )
                 if questions:
