@@ -52,6 +52,64 @@ def build_sync_platforms_response(platform_status: dict):
 @login_required
 @limiter.limit("5 per minute")
 def sync_platforms():
+    """Sync coding platform statistics for the authenticated user.
+    ---
+    tags:
+      - Profile
+    parameters:
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            leetcode:
+              type: string
+              description: LeetCode username.
+            github:
+              type: string
+              description: GitHub username.
+            gfg:
+              type: string
+              description: GeeksforGeeks username.
+            hackerrank:
+              type: string
+              description: HackerRank username.
+            codingninjas:
+              type: string
+              description: Coding Ninjas profile id or URL.
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: Platform sync result.
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            partial_success:
+              type: boolean
+            error:
+              type: string
+            platforms:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - synced
+                      - failed
+                      - skipped
+                  error:
+                    type: string
+      401:
+        description: Login required.
+      429:
+        description: Rate limit exceeded.
+    """
     data = request.json
     now = utc_now()
     user_id = current_user.id
@@ -208,6 +266,68 @@ def sync_platforms():
 @profile_bp.route("/edit_profile", methods=["POST"])
 @login_required
 def edit_profile():
+    """Update profile fields for the authenticated user.
+    ---
+    tags:
+      - Profile
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              maxLength: 100
+            bio:
+              type: string
+              maxLength: 500
+            location:
+              type: string
+              maxLength: 100
+            college:
+              type: string
+              maxLength: 200
+            headline:
+              type: string
+              maxLength: 150
+            linkedin_url:
+              type: string
+              maxLength: 300
+            twitter_url:
+              type: string
+              maxLength: 300
+            website_url:
+              type: string
+              maxLength: 300
+            resume_url:
+              type: string
+              maxLength: 300
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: Profile updated successfully.
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+      400:
+        description: Invalid profile payload.
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: false
+            error:
+              type: string
+      401:
+        description: Login required.
+    """
     data = request.get_json()
     if not data:
         return jsonify({"success": False, "error": "No data"}), 400
@@ -270,6 +390,32 @@ def public_card(user_id):
 
 @profile_bp.route("/search_universities")
 def search_universities():
+    """Search universities by name.
+    ---
+    tags:
+      - Profile
+    parameters:
+      - name: q
+        in: query
+        type: string
+        required: true
+        minLength: 2
+        description: University name search text.
+    responses:
+      200:
+        description: Matching universities.
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              country:
+                type: string
+              label:
+                type: string
+    """
     query = request.args.get("q", "").strip()
     if len(query) < 2:
         return jsonify([])
@@ -300,6 +446,46 @@ def search_universities():
 @login_required
 @limiter.limit("10 per minute")
 def upload_photo():
+    """Upload a profile photo.
+    ---
+    tags:
+      - Profile
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: photo
+        in: formData
+        type: file
+        required: true
+        description: Profile image file.
+    security:
+      - SessionAuth: []
+    responses:
+      200:
+        description: Photo uploaded successfully when an uploader is configured.
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            photo_url:
+              type: string
+      401:
+        description: Login required.
+      429:
+        description: Rate limit exceeded.
+      500:
+        description: Photo upload is currently disabled or upload failed.
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: false
+            error:
+              type: string
+              example: Photo upload disabled (Cloudinary not configured)
+    """
     return jsonify({"success": False, "error": "Photo upload disabled (Cloudinary not configured)"}), 500
 
 
