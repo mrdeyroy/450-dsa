@@ -17,6 +17,7 @@ from card_generator import generate_progress_card
 from app.extensions import db
 from app.extensions import limiter, cache
 from app.platforms.fetchers import (
+    fetch_atcoder,
     fetch_coding_ninjas,
     fetch_gfg,
     fetch_github,
@@ -131,6 +132,7 @@ def sync_platforms():
     gfg_user = current_user.gfg_username or ""
     hr_user = current_user.hackerrank_username or ""
     cn_user = current_user.codingninjas_username or ""
+    ac_user = current_user.atcoder_username or ""
 
     if "leetcode" in data:
         lc_user = data.get("leetcode", "").strip()
@@ -147,6 +149,9 @@ def sync_platforms():
     if "codingninjas" in data:
         cn_user = normalize_coding_ninjas_profile_id(data.get("codingninjas", ""))
         update_fields["codingninjas_username"] = cn_user
+    if "atcoder" in data:
+        ac_user = data.get("atcoder", "").strip()
+        update_fields["atcoder_username"] = ac_user
 
     combined = {}
     totals = {}
@@ -253,6 +258,20 @@ def sync_platforms():
             _mark("hackerrank", "failed", "Failed to fetch HackerRank stats.")
     else:
         _mark("hackerrank", "skipped")
+
+    if ac_user:
+        try:
+            ac = fetch_atcoder(ac_user)
+            if not ac:
+                _mark("atcoder", "failed", "No data returned (handle may be invalid or rate-limited).")
+            else:
+                _mark("atcoder", "synced")
+                if ac.get("total") is not None:
+                    totals["AtCoder"] = int(ac.get("total", 0))
+        except Exception:
+            _mark("atcoder", "failed", "Failed to fetch AtCoder stats.")
+    else:
+        _mark("atcoder", "skipped")
 
     update_fields["external_daily_counts"] = combined
     update_fields["external_totals"] = totals
